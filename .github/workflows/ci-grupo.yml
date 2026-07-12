@@ -16,7 +16,14 @@ jobs:
           python-version: "3.13"
       - run: pip install -e ".[testing]"
       - run: python runtests.py
-      - run: make coverage
+      - run: coverage run --source wagtail runtests.py
+      - run: coverage report -m
+      - run: coverage html
+      - run: coverage xml
+      - name: SonarCloud Scan
+        uses: sonarsource/sonarcloud-github-action@v2
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: coverage-report
