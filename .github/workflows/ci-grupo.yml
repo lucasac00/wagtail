@@ -20,6 +20,9 @@ jobs:
       - run: coverage report -m
       - run: coverage html
       - run: coverage xml
+      - name: Fix coverage paths for SonarCloud
+        run: |
+          sed -i 's|/home/runner/work/wagtail/wagtail/|./|g' coverage.xml || true
       - name: SonarCloud Scan
         uses: sonarsource/sonarcloud-github-action@e44258b109568baa0df60ed515909fc6c72cba92  # v2
         env:
