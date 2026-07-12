@@ -1,8 +1,8 @@
 # Engenharia de Software 2 - Grupo 03
-Arthur Fonseca -  811461
-Julia Tavares dos Santos - 820872
-Lucas Cardoso - 813583
-Luisa Tavares dos Santos - 820990
+Arthur Fonseca -  811461\
+Julia Tavares dos Santos - 820872\
+Lucas Cardoso - 813583\
+Luisa Tavares dos Santos - 820990\
 Samuel Said - 800209
 
 [Link para o README original](/README_og.md)
