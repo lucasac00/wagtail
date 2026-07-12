@@ -7,8 +7,8 @@ Samuel Said - 800209
 
 [Link para o README original](/README_og.md)
 
-Estrutura de pastas:
-[videos](/videos): Contém os vídeos criados durante o desenvolvimento do projeto
+Estrutura de pastas:\
+[videos](/videos): Contém os vídeos criados durante o desenvolvimento do projeto\
 [docs-grupo](/docs-grupo): Contém os documentos criados durante o desenvolvimento do projeto
 
 O restante do repositório é idêntico ao [Wagtail original](https://github.com/wagtail/wagtail), com adição apenas das pastas `videos/` e `docs-grupo/`.
