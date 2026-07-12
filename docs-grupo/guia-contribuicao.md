@@ -118,42 +118,7 @@ git push -u origin pr-upstream
 
 ---
 
-## 4. Checklist de entregas do projeto
-
-### Entrega Preliminar (já concluída)
-- [x] Vídeo de build e execução do sistema
-- [x] Vídeo demonstrando o sistema funcionando
-- [x] Vídeo armazenado em `videos/`
-
-### Entrega Final
-
-| # | Atividade | Responsável | Status |
-|---|-----------|-------------|--------|
-| H | Implementar e executar testes de unidade com pytest | A definir | ⬜ |
-| I | Gerar relatório de cobertura dos testes | A definir | ⬜ |
-| J | Configurar GitHub Actions para CI | A definir | ⬜ |
-| K | Configurar SonarQube/SonarCloud para análise estática | A definir | ⬜ |
-| L | Implementar testes para melhorar cobertura | A definir | ⬜ |
-| M1 | Implementar primeira mudança com testes | A definir | ⬜ |
-| M2 | Implementar segunda mudança com testes | A definir | ⬜ |
-| N | Cada integrante corrige 1 warning do SonarQube | Todos | ⬜ |
-| O | Abrir PR no wagtail/wagtail original | A definir | ⬜ |
-
-### Evidências obrigatórias
-- [ ] Repositório aberto e acessível
-- [ ] Issues documentando as atividades
-- [ ] Vídeos na pasta `videos/`
-- [ ] Testes de unidade com pytest
-- [ ] Relatório de cobertura
-- [ ] Configuração do GitHub Actions
-- [ ] Configuração do SonarQube/SonarCloud
-- [ ] Mudanças implementadas e testadas
-- [ ] Correções de warnings do SonarQube
-- [ ] PR submetido ao wagtail/wagtail
-
----
-
-## 5. Comandos úteis
+## 4. Comandos úteis
 
 ```bash
 # Testes Python (Django)
