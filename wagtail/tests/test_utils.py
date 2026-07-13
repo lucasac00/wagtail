@@ -1,15 +1,20 @@
 import hashlib
 import os
 import pickle
+import sys
 import tempfile
+import types
 import unittest
-from io import BytesIO
+import warnings
+from datetime import datetime, timedelta, timezone as dt_timezone
+from io import BytesIO, UnsupportedOperation
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
+from django.utils import timezone
 from django.utils.text import slugify
 from django.utils.translation import _trans
 from django.utils.translation import gettext_lazy as _
@@ -30,6 +35,8 @@ from wagtail.coreutils import (
 )
 from wagtail.models import Page, Site
 from wagtail.utils.file import hash_filelike
+from wagtail.utils.deprecation import MovedDefinitionHandler, RemovedInWagtail90Warning
+from wagtail.utils.timestamps import ensure_utc, parse_datetime_localized, render_timestamp
 from wagtail.utils.templates import template_is_overridden
 from wagtail.utils.utils import deep_update, flatten_choices
 from wagtail.utils.version import get_main_version
@@ -581,6 +588,86 @@ class HashFileLikeTestCase(SimpleTestCase):
             "bd36f0c5a02cd6e9e34202ea3ff8db07b533e025",
         )
 
+    def test_hashes_filelike_seek_raises_unsupported(self):
+        class SeekUnsupported:
+            def __init__(self):
+                self.data = BytesIO(b"test")
+                self._seek_raised = False
+
+            def read(self, size=-1):
+                return self.data.read(size)
+
+            def readinto(self, buf):
+                data = self.data.read(len(buf))
+                buf[: len(data)] = data
+                return len(data)
+
+            def readable(self):
+                return True
+
+            def seek(self, pos):
+                if not self._seek_raised:
+                    self._seek_raised = True
+                    raise UnsupportedOperation
+                self.data.seek(pos)
+
+        self.assertEqual(
+            hash_filelike(SeekUnsupported()),
+            "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
+        )
+
+    def test_hashes_filelike_restores_position(self):
+        f = BytesIO(b"hello world")
+        f.seek(4)
+        result = hash_filelike(f)
+        self.assertEqual(result, "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed")
+        self.assertEqual(f.tell(), 4)
+
+    def test_hashes_filelike_without_seek_or_tell(self):
+        class ReadOnly:
+            def __init__(self):
+                self.data = BytesIO(b"more data")
+
+            def read(self, size=-1):
+                return self.data.read(size)
+
+            def readinto(self, buf):
+                data = self.data.read(len(buf))
+                buf[: len(data)] = data
+                return len(data)
+
+            def readable(self):
+                return True
+
+        self.assertEqual(
+            hash_filelike(ReadOnly()),
+            "d639cba47f088464671a208f4adea60c2072e347",
+        )
+
+    def test_hashes_filelike_has_tell_but_no_seek(self):
+        class HasTellNoSeek:
+            def __init__(self):
+                self.data = BytesIO(b"data")
+
+            def read(self, size=-1):
+                return self.data.read(size)
+
+            def readinto(self, buf):
+                data = self.data.read(len(buf))
+                buf[: len(data)] = data
+                return len(data)
+
+            def readable(self):
+                return True
+
+            def tell(self):
+                return 10
+
+        self.assertEqual(
+            hash_filelike(HasTellNoSeek()),
+            "a17c9aaa61e80a1bf71d0d850af4e5baa9800bbd",
+        )
+
 
 class TestTemplateIsOverridden(SimpleTestCase):
     def setUp(self):
@@ -655,3 +742,114 @@ class TestFlattenChoices(SimpleTestCase):
                 "unknown": "Unknown",
             },
         )
+
+
+class TestMovedDefinitionHandler(SimpleTestCase):
+    def setUp(self):
+        self.new_module = types.ModuleType("test_wagtail_new_location")
+        self.new_module.OldName = type("MovedClass", (), {"value": 42})
+        self.old_module = types.ModuleType("test_wagtail_old_location")
+        self.old_module.still_here = "kept"
+        sys.modules["test_wagtail_new_location"] = self.new_module
+        self.handler = MovedDefinitionHandler(
+            self.old_module,
+            {"OldName": "test_wagtail_new_location"},
+            RemovedInWagtail90Warning,
+        )
+
+    def tearDown(self):
+        sys.modules.pop("test_wagtail_new_location", None)
+
+    def test_moved_definition_resolves(self):
+        obj = self.handler.OldName
+        self.assertTrue(isinstance(obj, type))
+        self.assertEqual(obj.__name__, "MovedClass")
+        self.assertEqual(obj.value, 42)
+
+    def test_moved_definition_emits_warning(self):
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            self.handler.OldName
+            self.assertEqual(len(w), 1)
+            self.assertIn("moved", str(w[0].message).lower())
+
+    def test_moved_definition_cached(self):
+        self.handler.OldName
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            self.handler.OldName
+            self.assertEqual(len(w), 0)
+
+    def test_original_attribute_passthrough(self):
+        self.assertEqual(self.handler.still_here, "kept")
+
+    def test_moved_definition_renamed(self):
+        self.new_module.RenamedClass = type("RenamedClass", (), {})
+        handler = MovedDefinitionHandler(
+            self.old_module,
+            {"ClassAlias": ("test_wagtail_new_location", "RenamedClass")},
+            RemovedInWagtail90Warning,
+        )
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            obj = handler.ClassAlias
+            self.assertEqual(obj.__name__, "RenamedClass")
+            self.assertIn("renamed", str(w[0].message).lower())
+
+
+class TestEnsureUtc(SimpleTestCase):
+    @override_settings(USE_TZ=True)
+    def test_naive_becomes_utc(self):
+        naive = datetime(2025, 1, 15, 12, 0, 0)
+        result = ensure_utc(naive)
+        self.assertTrue(timezone.is_aware(result))
+        self.assertEqual(result.tzinfo, dt_timezone.utc)
+
+    @override_settings(USE_TZ=True)
+    def test_aware_converts_to_utc(self):
+        eastern = timezone.get_fixed_timezone(timedelta(hours=-5))
+        aware = datetime(2025, 1, 15, 12, 0, 0, tzinfo=eastern)
+        result = ensure_utc(aware)
+        self.assertTrue(timezone.is_aware(result))
+        self.assertEqual(result.tzinfo, dt_timezone.utc)
+        self.assertEqual(result.hour, 17)
+
+    @override_settings(USE_TZ=False)
+    def test_no_tz_returns_unchanged(self):
+        naive = datetime(2025, 6, 1, 10, 30, 0)
+        result = ensure_utc(naive)
+        self.assertFalse(timezone.is_aware(result))
+        self.assertEqual(result, naive)
+
+    @override_settings(USE_TZ=True)
+    def test_already_utc_stays_utc(self):
+        utc_dt = datetime(2025, 3, 10, 8, 0, 0, tzinfo=dt_timezone.utc)
+        result = ensure_utc(utc_dt)
+        self.assertEqual(result, utc_dt)
+
+
+class TestParseDatetimeLocalized(SimpleTestCase):
+    @override_settings(USE_TZ=True)
+    def test_naive_string_becomes_aware(self):
+        result = parse_datetime_localized("2025-01-15T12:00:00")
+        self.assertTrue(timezone.is_aware(result))
+
+    @override_settings(USE_TZ=False)
+    def test_no_tz_returns_naive(self):
+        result = parse_datetime_localized("2025-01-15T12:00:00")
+        self.assertFalse(timezone.is_aware(result))
+
+
+class TestRenderTimestamp(SimpleTestCase):
+    @override_settings(USE_TZ=True)
+    def test_aware_renders_localtime(self):
+        utc_dt = datetime(2025, 1, 15, 12, 0, 0, tzinfo=dt_timezone.utc)
+        result = render_timestamp(utc_dt)
+        self.assertIn("2025", result)
+        self.assertGreater(len(result), 5)
+
+    def test_naive_renders_directly(self):
+        naive = datetime(2025, 6, 1, 10, 30, 0)
+        result = render_timestamp(naive)
+        self.assertIn("2025", result)
+        self.assertGreater(len(result), 5)
