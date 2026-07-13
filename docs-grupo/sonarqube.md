@@ -20,3 +20,6 @@ O problema é o uso direto da tag v2. O SonarQube aponta isso como uma issue de 
 
 Agora, a linha fica:\
 `uses: sonarsource/sonarcloud-github-action@e44258b109568baa0df60ed515909fc6c72cba92`
+
+Finalmente, temos a análise do SonarQube do projeto:
+![alt text](./images/image.png)
