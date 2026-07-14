@@ -654,7 +654,7 @@ class ChildRelationComparison:
         objs_a = list(self.val_a.all())
         objs_b = list(self.val_b.all())
 
-        map_forwards, map_backwards, added, deleted = self.get_mapping(objs_a, objs_b)
+        _, map_backwards, added, deleted = self.get_mapping(objs_a, objs_b)
         objs_a = dict(enumerate(objs_a))
         objs_b = dict(enumerate(objs_b))
 
@@ -682,7 +682,7 @@ class ChildRelationComparison:
         objs_a = list(self.val_a.all())
         objs_b = list(self.val_b.all())
 
-        map_forwards, map_backwards, added, deleted = self.get_mapping(objs_a, objs_b)
+        map_forwards, _, added, deleted = self.get_mapping(objs_a, objs_b)
 
         if added or deleted:
             return True
