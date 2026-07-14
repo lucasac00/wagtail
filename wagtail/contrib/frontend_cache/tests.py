@@ -16,6 +16,7 @@ from wagtail.contrib.frontend_cache.backends import (
     CloudfrontBackend,
     HTTPBackend,
 )
+from wagtail.contrib.frontend_cache.backends.dummy import DummyBackend
 from wagtail.contrib.frontend_cache.utils import get_backends
 from wagtail.models import Page
 from wagtail.test.testapp.models import EventIndex, EventPage
@@ -59,6 +60,19 @@ class TestBackendConfiguration(SimpleTestCase):
 
         self.assertEqual(backends["varnish"].cache_scheme, "http")
         self.assertEqual(backends["varnish"].cache_netloc, "localhost:8000")
+
+    def test_dummy(self):
+        backends = get_backends(
+            backend_settings={
+                "dummy": {
+                    "BACKEND": "wagtail.contrib.frontend_cache.backends.dummy.DummyBackend",
+                },
+            }
+        )
+
+        self.assertEqual(set(backends.keys()), {"dummy"})
+        self.assertIsInstance(backends["dummy"], DummyBackend)
+        self.assertEqual(backends["dummy"].hostnames, ["*"])
 
     def test_cloudflare(self):
         backends = get_backends(
