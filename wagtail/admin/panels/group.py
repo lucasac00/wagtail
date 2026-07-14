@@ -59,7 +59,9 @@ class PanelGroup(Panel):
                     elif isinstance(current_val, tuple) and isinstance(
                         new_val, (list, tuple)
                     ):
-                        options[key] = list(current_val).extend(new_val)
+                        merged = list(current_val)
+                        merged.extend(new_val)
+                        options[key] = merged
                     elif isinstance(current_val, dict) and isinstance(new_val, dict):
                         current_val.update(new_val)
                     elif isinstance(current_val, set) and isinstance(new_val, set):
