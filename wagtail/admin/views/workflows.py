@@ -641,7 +641,7 @@ def select_task_type(request):
     if len(task_types) == 1:
         # Only one task type is available - redirect straight to the create form rather than
         # making the user choose
-        verbose_name, app_label, model_name, description = task_types[0]
+        _, app_label, model_name, _ = task_types[0]
         return redirect("wagtailadmin_workflows:add_task", app_label, model_name)
 
     return render(
